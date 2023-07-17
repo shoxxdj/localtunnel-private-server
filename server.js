@@ -8,6 +8,46 @@ import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager';
 
+const fs=require('fs-extra');
+const nconf = require('nconf');
+
+const configFileLocation="/etc/localtunnel-server/config";
+
+const crypto = require('crypto');
+
+function generateRandomBase32String(length) {
+  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let randomString = '';
+
+  while (randomString.length < length) {
+    const randomBytes = crypto.randomBytes(4);
+    for (let i = 0; i < randomBytes.length && randomString.length < length; i++) {
+      const index = randomBytes[i] % base32Chars.length;
+      randomString += base32Chars[index];
+    }
+  }
+
+  return randomString;
+}
+
+var mustDisplayConfig = false; 
+var defaultConfig={};
+if(!fs.existsSync(configFileLocation)){
+    defaultConfig={"secret":generateRandomBase32String(32),len:15,alg:"SHA-512",period:60}
+	var getDirName = require('path').dirname;
+    fs.mkdir(getDirName(configFileLocation), { recursive: true}, function (err) {
+    	if(err) console.log(err);
+	    fs.writeFile(configFileLocation,defaultConfig);
+        mustDisplayConfig= true;
+	});
+}
+
+if(mustDisplayConfig){
+    console.log(defaultConfig);
+}
+
+
+
 const debug = Debug('localtunnel:server');
 
 export default function(opt) {
@@ -32,6 +72,14 @@ export default function(opt) {
         console.log("yeah eya");
         next();
     }
+
+    function allowedToCreateTunnel(ctx){
+        console.log('--');
+        console.log(ctx);
+        console.log('|--|')
+        return true;
+    }
+
 
     router.get('/api/status', mycallBack ,async (ctx, next) => {
         const stats = manager.stats;
@@ -69,7 +117,9 @@ export default function(opt) {
         }
 
         const isNewClientRequest = ctx.query['new'] !== undefined;
-        if (isNewClientRequest) {
+        if (isNewClientRequest && allowedToCreateTunnel(ctx)) {
+
+
             const reqId = hri.random();
             debug('making new client with id %s', reqId);
             const info = await manager.newClient(reqId);
