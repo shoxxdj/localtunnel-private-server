@@ -30,23 +30,23 @@ function generateRandomBase32String(length) {
   return randomString;
 }
 
-var mustDisplayConfig = false; 
 var defaultConfig={};
 if(!fs.existsSync(configFileLocation)){
+    console.log("not exist");
     defaultConfig={"secret":generateRandomBase32String(32),len:15,alg:"SHA-512",period:60}
 	var getDirName = require('path').dirname;
     fs.mkdir(getDirName(configFileLocation), { recursive: true}, function (err) {
     	if(err) console.log(err);
-	    fs.writeFile(configFileLocation,defaultConfig);
-        mustDisplayConfig= true;
+	    fs.writeFileSync(configFileLocation,"{}");
+	    nconf.file({file:configFileLocation});
+	    nconf.set('totp:secret',defaultConfig.secret);
+	    nconf.set('totp:len',defaultConfig.len);
+	    nconf.set('totp:alg',defaultConfig.alg);
+	    nconf.set('totp:period',defaultConfig.period);
+	    nconf.save();
+            console.log(defaultConfig);
 	});
 }
-
-if(mustDisplayConfig){
-    console.log(defaultConfig);
-}
-
-
 
 const debug = Debug('localtunnel:server');
 
@@ -75,9 +75,10 @@ export default function(opt) {
 
     function allowedToCreateTunnel(ctx){
         console.log('--');
-        console.log(ctx);
-        console.log('|--|')
-        return true;
+	let token = ctx.req.headers.token;
+	let timestamp = ctx.req.headers.timestamp;
+        console.log('|-()-|');
+	return true;
     }
 
 
