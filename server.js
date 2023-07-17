@@ -49,6 +49,9 @@ if(!fs.existsSync(configFileLocation)){
 }
 
 const debug = Debug('localtunnel:server');
+const totp = require('totp-generator');
+
+
 
 export default function(opt) {
     opt = opt || {};
@@ -74,11 +77,16 @@ export default function(opt) {
     }
 
     function allowedToCreateTunnel(ctx){
-        console.log('--');
-	let token = ctx.req.headers.token;
+	nconf.file({file:configFileLocation});
+	let clientToken = ctx.req.headers.token;
 	let timestamp = ctx.req.headers.timestamp;
-        console.log('|-()-|');
-	return true;
+	let serverToken = totp(nconf.get('totp:secret'),{digits:nconf.get('totp:len'),algorithm:nconf.get('totp:alg'),period:nconf.get('totp:period')});
+	if(serverToken===clientToken){
+		return true
+	}
+	else{
+		    return false
+	}
     }
 
 
@@ -119,8 +127,6 @@ export default function(opt) {
 
         const isNewClientRequest = ctx.query['new'] !== undefined;
         if (isNewClientRequest && allowedToCreateTunnel(ctx)) {
-
-
             const reqId = hri.random();
             debug('making new client with id %s', reqId);
             const info = await manager.newClient(reqId);
@@ -130,7 +136,9 @@ export default function(opt) {
             ctx.body = info;
             return;
         }
-
+	    else{
+		return;
+	}
         // no new client request, send to landing page
         ctx.redirect(landingPage);
     });
